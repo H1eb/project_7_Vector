@@ -3,16 +3,15 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <cassert>
+
 
 struct ReserveProxyObj {
-    explicit ReserveProxyObj(size_t capacity_to_reserve)
-            : capacity(capacity_to_reserve) {
-    }
     size_t capacity;
 };
 
 ReserveProxyObj Reserve(size_t capacity_to_reserve) {
-    return ReserveProxyObj(capacity_to_reserve);
+    return ReserveProxyObj{capacity_to_reserve};
 }
 
 template <typename Type>
@@ -51,6 +50,39 @@ public:
             , capacity_(reserved.capacity) {
     }
     
+    SimpleVector(const SimpleVector& other) 
+        : items_(other.size_)
+        , size_(other.size_)
+        , capacity_(other.size_){
+        std::copy(other.items_.Get(), other.items_.Get() + size_, items_.Get());
+    }
+    
+    SimpleVector(SimpleVector&& other) 
+        : items_(std::move(other.items_)){
+        size_ = std::exchange(other.size_, 0);
+        capacity_ = std::exchange(other.capacity_, 0);
+    }
+
+    SimpleVector& operator=(const SimpleVector& rhs) {
+        if (&rhs != this){
+            if (rhs.IsEmpty())
+                Clear();
+        
+            if (this != &rhs) {
+                auto rhs_copy(rhs);
+                swap(rhs_copy);
+            }
+        }
+        return *this;
+    }
+
+    SimpleVector& operator=(SimpleVector&& rhs){
+		items_ = std::move(rhs.items_);
+        size_ = std::exchange(rhs.size_, 0);
+        capacity_ = std::exchange(rhs.capacity_, 0);
+        return *this;
+	}
+    
     void Reserve(size_t new_capacity){
         if (capacity_ < new_capacity){
             auto new_items = ReallocateCopy(new_capacity);
@@ -76,25 +108,29 @@ public:
 
     // Возвращает ссылку на элемент с индексом index
     Type& operator[](size_t index) noexcept {
+        assert(index < size_);
         return items_[index];
     }
 
     // Возвращает константную ссылку на элемент с индексом index
     const Type& operator[](size_t index) const noexcept {
+        assert(index < size_);
         return items_[index];
     }
 
     // Возвращает константную ссылку на элемент с индексом index
     // Выбрасывает исключение std::out_of_range, если index >= size
     Type& At(size_t index) {
-        if (index >= size_) throw std::out_of_range{"index >= size"};
+        if (index >= size_) 
+            throw std::out_of_range{"index >= size"};
         return items_[index];
     }
 
     // Возвращает константную ссылку на элемент с индексом index
     // Выбрасывает исключение std::out_of_range, если index >= size
     const Type& At(size_t index) const {
-        if (index >= size_) throw std::out_of_range{"index >= size"};
+        if (index >= size_) 
+            throw std::out_of_range{"index >= size"};
         return items_[index];
     }
 
@@ -156,37 +192,6 @@ public:
         return items_.Get()+size_;
     }
     
-    SimpleVector(const SimpleVector& other) 
-        : items_(other.size_)
-        , size_(other.size_)
-        , capacity_(other.size_){
-        std::copy(other.items_.Get(), other.items_.Get() + size_, items_.Get());
-    }
-    
-    SimpleVector(SimpleVector&& other) 
-        : items_(std::move(other.items_)){
-        size_ = std::exchange(other.size_, 0);
-        capacity_ = std::exchange(other.capacity_, 0);
-    }
-
-    SimpleVector& operator=(const SimpleVector& rhs) {
-        if (rhs.IsEmpty())
-            Clear();
-        
-        if (this != &rhs) {
-            auto rhs_copy(rhs);
-            swap(rhs_copy);
-        }
-        return *this;
-    }
-
-    SimpleVector& operator=(SimpleVector&& rhs){
-		items_ = std::move(rhs.items_);
-        size_ = std::exchange(rhs.size_, 0);
-        capacity_ = std::exchange(rhs.capacity_, 0);
-        return *this;
-	}
-    
     // Добавляет элемент в конец вектора
     // При нехватке места увеличивает вдвое вместимость вектора
     void PushBack(const Type& item) {
@@ -223,7 +228,7 @@ public:
         assert(begin() <= pos && pos <= end());
         size_t new_pos = pos - cbegin();
         size_t new_size = size_ + 1;
-        if (size_+1 <= capacity_) {
+        if (new_size <= capacity_) {
             Iterator change_pos = begin() + new_pos;
             std::copy_backward(pos, cend(), end() + 1);
             *change_pos = value;
@@ -231,7 +236,7 @@ public:
             capacity_ = std::max(capacity_ * 2, new_size);
             ItemsPtr items(capacity_);
             Iterator items_pos = items.Get() + new_pos;
-            std::copy(cbegin(), pos, items.Get());
+            std::copy(pos, cend(), items_pos+1);
             *items_pos = value;
             items_.swap(items);
         }            
@@ -244,7 +249,7 @@ public:
         size_t new_pos = pos - cbegin();
         size_t new_size = size_ + 1;
         Iterator change_pos = begin() + new_pos;
-        if (size_+1 <= capacity_){
+        if (new_size <= capacity_){
             std::move_backward(change_pos, end(), end() + 1);
             *change_pos = std::move(value);
         } else {
