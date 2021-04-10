@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <cassert>
-
+#include <utility>
 
 struct ReserveProxyObj {
     size_t capacity;
@@ -66,12 +66,10 @@ public:
     SimpleVector& operator=(const SimpleVector& rhs) {
         if (&rhs != this){
             if (rhs.IsEmpty())
-                Clear();
-        
-            if (this != &rhs) {
-                auto rhs_copy(rhs);
+                Clear(); 
+                
+            auto rhs_copy(rhs);
                 swap(rhs_copy);
-            }
         }
         return *this;
     }
@@ -236,8 +234,9 @@ public:
             capacity_ = std::max(capacity_ * 2, new_size);
             ItemsPtr items(capacity_);
             Iterator items_pos = items.Get() + new_pos;
-            std::copy(pos, cend(), items_pos+1);
+            std::copy(cbegin(), pos, items.Get());
             *items_pos = value;
+            std::copy(pos, cend(), items_pos+1);
             items_.swap(items);
         }            
         size_ = new_size;
