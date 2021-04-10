@@ -4,7 +4,11 @@
 #include <algorithm>
 #include <stdexcept>
 #include <cassert>
+<<<<<<< HEAD
 #include <utility>
+=======
+
+>>>>>>> 732665adb65acbfab8cf570363e17564010a2b74
 
 struct ReserveProxyObj {
     size_t capacity;
@@ -66,10 +70,19 @@ public:
     SimpleVector& operator=(const SimpleVector& rhs) {
         if (&rhs != this){
             if (rhs.IsEmpty())
+<<<<<<< HEAD
                 Clear(); 
                 
             auto rhs_copy(rhs);
                 swap(rhs_copy);
+=======
+                Clear();
+        
+            if (this != &rhs) {
+                auto rhs_copy(rhs);
+                swap(rhs_copy);
+            }
+>>>>>>> 732665adb65acbfab8cf570363e17564010a2b74
         }
         return *this;
     }
@@ -234,7 +247,7 @@ public:
             capacity_ = std::max(capacity_ * 2, new_size);
             ItemsPtr items(capacity_);
             Iterator items_pos = items.Get() + new_pos;
-            std::copy(cbegin(), pos, items.Get());
+            std::copy(pos, cend(), items_pos+1);
             *items_pos = value;
             std::copy(pos, cend(), items_pos+1);
             items_.swap(items);
